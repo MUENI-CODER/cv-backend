@@ -16,6 +16,29 @@ README.md
 ## 📋 Project Overview
 
 A complete CV management system that allows users to create, customize, and share professional resumes. Built from scratch with modern technologies and deployed to the cloud.
+## 📸 Screenshots
+
+### Home Page
+![Home Page](screenshots/1-home.png)
+
+### Templates Gallery
+![Templates Gallery](screenshots/2-templates.png)
+
+### Create CV with Live Preview
+![Create CV](screenshots/3-create-cv.png)
+
+### Dashboard
+![Dashboard](screenshots/5-dashboard.png)
+
+### Public CV View
+![Public CV](screenshots/6-public-cv.png)
+
+### Stats Dashboard
+![Stats Dashboard](screenshots/7-stats.png)
+
+### Dark Mode
+![Dark Mode](screenshots/8-dark-mode.png)
+
 
 ## ✨ Key Features
 
