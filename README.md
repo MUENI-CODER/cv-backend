@@ -11,7 +11,7 @@ README.md
 ## 🚀 Live Demo
 
 **Frontend:** [https://my-cv-manager.netlify.app](https://my-cv-manager.netlify.app)
-**Backend API:** [https://cv-backend.onrender.com](https://cv-backend.onrender.com)
+**Backend API:** [https://cv-backend-vcs8.onrender.com](https://cv-backend-vcs8.onrender.com)
 
 ## 📋 Project Overview
 
