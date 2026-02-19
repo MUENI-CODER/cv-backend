@@ -12,6 +12,7 @@ README.md
 
 **Frontend:** [https://my-cv-manager.netlify.app](https://my-cv-manager.netlify.app)
 **Backend API:** [https://cv-backend-vcs8.onrender.com](https://cv-backend-vcs8.onrender.com)
+**Example Shared CV:** [https://my-cv-manager.netlify.app/cv/73609746ec3d1d1d](https://my-cv-manager.netlify.app/cv/73609746ec3d1d1d)
 
 ## 📋 Project Overview
 
@@ -77,6 +78,12 @@ A complete CV management system that allows users to create, customize, and shar
 - Full theme support
 - Persistent preference
 - Accessible design
+
+  ### 🔗 **Shareable CV Links** ✅
+- Each CV gets a unique URL like `https://my-cv-manager.netlify.app/cv/abc123`
+- Public view-only pages that look great on mobile
+- Perfect for sharing with employers
+- [**View Live Example**](https://my-cv-manager.netlify.app/cv/73609746ec3d1d1d)
 
 ## 🛠️ Tech Stack
 
