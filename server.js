@@ -2,14 +2,8 @@
 const cors = require('cors');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const path = require('path');
 
-// Load .env file
 dotenv.config();
-
-// Debug: check if env vars are loaded
-console.log('PORT from env:', process.env.PORT);
-console.log('MONGODB_URI exists:', !!process.env.MONGODB_URI);
 
 const app = express();
 const PORT = process.env.PORT || 5002;
@@ -20,7 +14,7 @@ app.use(express.json());
 
 // MongoDB Connection
 if (!process.env.MONGODB_URI) {
-  console.error('❌ MONGODB_URI is not defined in .env file');
+  console.error('❌ MONGODB_URI is not defined');
   process.exit(1);
 }
 
@@ -44,12 +38,15 @@ const cvSchema = new mongoose.Schema({
 
 const CV = mongoose.model('CV', cvSchema);
 
-// Routes
+// ========== ROUTES ==========
+app.get('/', (req, res) => {
+  res.json({ message: 'CV Backend API is running', endpoints: ['/health', '/api/cvs'] });
+});
+
 app.get('/health', (req, res) => {
   res.json({ message: 'Server is working!' });
 });
 
-// Get all CVs
 app.get('/api/cvs', async (req, res) => {
   try {
     const cvs = await CV.find().sort({ createdAt: -1 });
@@ -59,7 +56,6 @@ app.get('/api/cvs', async (req, res) => {
   }
 });
 
-// Create CV
 app.post('/api/cvs', async (req, res) => {
   try {
     const cv = new CV(req.body);
@@ -70,7 +66,6 @@ app.post('/api/cvs', async (req, res) => {
   }
 });
 
-// Update CV
 app.put('/api/cvs/:id', async (req, res) => {
   try {
     const cv = await CV.findByIdAndUpdate(
@@ -84,7 +79,6 @@ app.put('/api/cvs/:id', async (req, res) => {
   }
 });
 
-// Delete CV
 app.delete('/api/cvs/:id', async (req, res) => {
   try {
     await CV.findByIdAndDelete(req.params.id);
@@ -94,7 +88,7 @@ app.delete('/api/cvs/:id', async (req, res) => {
   }
 });
 
-// Start server - IMPORTANT: '0.0.0.0' makes it work on Render
+// ========== START SERVER ==========
 app.listen(PORT, '0.0.0.0', () => {
-  console.log('Server running on http://localhost:' + PORT);
+  console.log(🚀 Server running on port );
 });
