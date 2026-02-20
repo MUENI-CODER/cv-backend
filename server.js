@@ -13,7 +13,13 @@ const PORT = process.env.PORT || 5002;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
 // Middleware
-app.use(cors());
+const corsOptions = {
+  origin: ['https://my-cv-manager.netlify.app', 'http://localhost:3000'], // Add your frontend URLs here
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 
 // MongoDB Connection
