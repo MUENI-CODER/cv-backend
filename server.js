@@ -2,9 +2,8 @@
 const cors = require('cors');
 const mongoose = require('mongoose');
 const dotenv = require('dotenv');
-const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const User = require('./models/User');
 
 dotenv.config();
 
@@ -12,14 +11,25 @@ const app = express();
 const PORT = process.env.PORT || 5002;
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-this';
 
-// Middleware
+// ========== CORS CONFIGURATION - THIS FIXES YOUR ERROR ==========
 const corsOptions = {
-  origin: ['https://my-cv-manager.netlify.app', 'http://localhost:3000'], // Add your frontend URLs here
-  credentials: true,
-  optionsSuccessStatus: 200
+  origin: [
+    'https://my-cv-manager.netlify.app',  // Your live frontend
+    'http://localhost:3000',                // Local development
+    'http://localhost:3001'                 // Alternative local port
+  ],
+  credentials: true,                          // Allow cookies/auth headers
+  optionsSuccessStatus: 200,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 };
 
 app.use(cors(corsOptions));
+
+// Handle preflight requests for all routes
+app.options('*', cors(corsOptions));
+// ==============================================================
+
 app.use(express.json());
 
 // MongoDB Connection
@@ -31,6 +41,44 @@ if (!process.env.MONGODB_URI) {
 mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('✅ Connected to MongoDB Atlas'))
   .catch(err => console.error('❌ MongoDB connection error:', err));
+
+// ========== USER MODEL ==========
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+userSchema.pre('save', async function(next) {
+  if (!this.isModified('password')) return next();
+  this.password = await bcrypt.hash(this.password, 10);
+  next();
+});
+
+userSchema.methods.comparePassword = async function(candidatePassword) {
+  return await bcrypt.compare(candidatePassword, this.password);
+};
+
+const User = mongoose.model('User', userSchema);
+
+// ========== CV MODEL ==========
+const cvSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  title: String,
+  fullName: String,
+  email: String,
+  phone: String,
+  summary: String,
+  experience: String,
+  education: String,
+  skills: String,
+  template: { type: String, default: 'modern' },
+  shareId: { type: String, unique: true, sparse: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const CV = mongoose.model('CV', cvSchema);
 
 // ========== AUTH MIDDLEWARE ==========
 const authMiddleware = async (req, res, next) => {
@@ -50,23 +98,29 @@ const authMiddleware = async (req, res, next) => {
 };
 
 // ========== AUTH ROUTES ==========
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'CV Backend API is running',
+    endpoints: ['/health', '/api/auth/register', '/api/auth/login', '/api/auth/me', '/api/cvs']
+  });
+});
 
-// Register
+app.get('/health', (req, res) => {
+  res.json({ message: 'Server is working!' });
+});
+
 app.post('/api/auth/register', async (req, res) => {
   try {
     const { name, email, password } = req.body;
     
-    // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: 'Email already registered' });
     }
     
-    // Create user
     const user = new User({ name, email, password });
     await user.save();
     
-    // Generate token
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
     
     res.status(201).json({
@@ -83,24 +137,20 @@ app.post('/api/auth/register', async (req, res) => {
   }
 });
 
-// Login
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
     
-    // Find user
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
     
-    // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(401).json({ error: 'Invalid email or password' });
     }
     
-    // Generate token
     const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
     
     res.json({
@@ -117,7 +167,6 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// Get current user
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
   res.json({
     user: {
@@ -128,32 +177,11 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
   });
 });
 
-// ========== CV ROUTES (Protected) ==========
-
-// Function to generate unique share ID
+// ========== CV ROUTES ==========
 function generateShareId() {
-  return crypto.randomBytes(8).toString('hex');
+  return require('crypto').randomBytes(8).toString('hex');
 }
 
-// CV Schema with userId
-const cvSchema = new mongoose.Schema({
-  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  title: String,
-  fullName: String,
-  email: String,
-  phone: String,
-  summary: String,
-  experience: String,
-  education: String,
-  skills: String,
-  template: { type: String, default: 'modern' },
-  shareId: { type: String, unique: true, sparse: true },
-  createdAt: { type: Date, default: Date.now }
-});
-
-const CV = mongoose.model('CV', cvSchema);
-
-// Get all CVs for logged in user
 app.get('/api/cvs', authMiddleware, async (req, res) => {
   try {
     const cvs = await CV.find({ userId: req.user._id }).sort({ createdAt: -1 });
@@ -163,20 +191,6 @@ app.get('/api/cvs', authMiddleware, async (req, res) => {
   }
 });
 
-// Get CV by share ID (public - no auth needed)
-app.get('/api/cvs/share/:shareId', async (req, res) => {
-  try {
-    const cv = await CV.findOne({ shareId: req.params.shareId });
-    if (!cv) {
-      return res.status(404).json({ error: 'CV not found' });
-    }
-    res.json(cv);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-// Create CV (protected)
 app.post('/api/cvs', authMiddleware, async (req, res) => {
   try {
     const shareId = generateShareId();
@@ -192,7 +206,6 @@ app.post('/api/cvs', authMiddleware, async (req, res) => {
   }
 });
 
-// Update CV (protected - verify ownership)
 app.put('/api/cvs/:id', authMiddleware, async (req, res) => {
   try {
     const cv = await CV.findOne({ _id: req.params.id, userId: req.user._id });
@@ -211,7 +224,6 @@ app.put('/api/cvs/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// Delete CV (protected - verify ownership)
 app.delete('/api/cvs/:id', authMiddleware, async (req, res) => {
   try {
     const cv = await CV.findOne({ _id: req.params.id, userId: req.user._id });
@@ -226,16 +238,16 @@ app.delete('/api/cvs/:id', authMiddleware, async (req, res) => {
   }
 });
 
-// ========== PUBLIC ROUTES ==========
-app.get('/', (req, res) => {
-  res.json({ 
-    message: 'CV Backend API is running',
-    endpoints: ['/health', '/api/cvs', '/api/cvs/share/:shareId', '/api/auth/register', '/api/auth/login']
-  });
-});
-
-app.get('/health', (req, res) => {
-  res.json({ message: 'Server is working!' });
+app.get('/api/cvs/share/:shareId', async (req, res) => {
+  try {
+    const cv = await CV.findOne({ shareId: req.params.shareId });
+    if (!cv) {
+      return res.status(404).json({ error: 'CV not found' });
+    }
+    res.json(cv);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // ========== START SERVER ==========
